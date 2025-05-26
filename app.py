@@ -1,36 +1,57 @@
 import pandas as pd
 import streamlit as st
 import plotly.express as px
+import locale
+import os
+
+# Configuração para evitar problemas de locale
+try:
+    locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
+except locale.Error:
+    # Fallback para locale padrão se pt_BR não estiver disponível
+    locale.setlocale(locale.LC_ALL, '')
 
 # Configurações iniciais
 st.set_page_config(page_title="Painel de Vendas", layout="wide")
 
+# Solução alternativa para nomes de meses em português
+MESES_PT_BR = {
+    1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
+    5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
+    9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"
+}
+
 # Carregar dados
-clientes = pd.read_csv('data/clientes.csv')
-produtos = pd.read_csv('data/produtos.csv')
-vendedores = pd.read_csv('data/vendedores.csv')
-fornecedores = pd.read_csv('data/fornecedores.csv')
-vendas = pd.read_csv('data/vendas.csv')
+@st.cache_data  # Cache para melhor performance
+def load_data():
+    clientes = pd.read_csv('data/clientes.csv')
+    produtos = pd.read_csv('data/produtos.csv')
+    vendedores = pd.read_csv('data/vendedores.csv')
+    fornecedores = pd.read_csv('data/fornecedores.csv')
+    vendas = pd.read_csv('data/vendas.csv')
+    
+    # Pré-processamento
+    vendas['data'] = pd.to_datetime(vendas['data'])
+    vendas['ano'] = vendas['data'].dt.year
+    vendas['mes'] = vendas['data'].dt.month
+    vendas['mes_nome'] = vendas['mes'].map(MESES_PT_BR)  # Usando nosso mapeamento
+    
+    # Merge das tabelas com padronização de nomes
+    df = vendas.merge(clientes, on='id_cliente') \
+               .merge(produtos, on='id_produto') \
+               .merge(vendedores, on='id_vendedor') \
+               .merge(fornecedores, left_on='fornecedor_id', right_on='id_fornecedor') \
+               .rename(columns={
+                   'nome_x': 'cliente',
+                   'nome_y': 'vendedor',
+                   'estado_x': 'estado_cliente',
+                   'estado_y': 'estado_fornecedor',
+                   'cidade_x': 'cidade_cliente',
+                   'cidade_y': 'cidade_fornecedor'
+               })
+    return df
 
-# Pré-processamento
-vendas['data'] = pd.to_datetime(vendas['data'])
-vendas['ano'] = vendas['data'].dt.year
-vendas['mes'] = vendas['data'].dt.month
-vendas['mes_nome'] = vendas['data'].dt.month_name(locale='pt_BR')
-
-# Merge das tabelas com padronização de nomes
-df = vendas.merge(clientes, on='id_cliente') \
-           .merge(produtos, on='id_produto') \
-           .merge(vendedores, on='id_vendedor') \
-           .merge(fornecedores, left_on='fornecedor_id', right_on='id_fornecedor') \
-           .rename(columns={
-               'nome_x': 'cliente',
-               'nome_y': 'vendedor',
-               'estado_x': 'estado_cliente',
-               'estado_y': 'estado_fornecedor',
-               'cidade_x': 'cidade_cliente',
-               'cidade_y': 'cidade_fornecedor'
-           })
+df = load_data()
 
 # Sidebar
 aba = st.sidebar.radio("Selecione a aba", ['Visão Geral', 'Produtos & Clientes', 'Análise Geográfica'])
@@ -124,7 +145,7 @@ elif aba == 'Análise Geográfica':
         st.plotly_chart(fig_estado, use_container_width=True)
     
     with col2:
-        # Vendas por cidade do cliente (usando cidade_cliente corrigida)
+        # Vendas por cidade do cliente
         vendas_cidade = df_filtrado.groupby('cidade_cliente')['valor_total'].sum().sort_values(ascending=False).reset_index()
         st.subheader("Top Cidades por Vendas")
         fig_cidade = px.bar(vendas_cidade.head(10), x='cidade_cliente', y='valor_total',
