@@ -1,0 +1,11 @@
+id_cliente,nome,cidade,estado,sexo,idade
+1,Cliente 1,Salvador,CE,M,33
+2,Cliente 2,Salvador,CE,M,51
+3,Cliente 3,Curitiba,PR,F,48
+4,Cliente 4,Fortaleza,SP,F,41
+5,Cliente 5,Recife,PE,M,29
+6,Cliente 6,Fortaleza,PR,F,24
+7,Cliente 7,Recife,PE,F,50
+8,Cliente 8,Fortaleza,BA,M,46
+9,Cliente 9,Curitiba,SP,F,29
+10,Cliente 10,Fortaleza,SP,M,52
